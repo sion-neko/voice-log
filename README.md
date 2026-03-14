@@ -3,7 +3,6 @@
 ローカルLLM環境で音声を文字起こしするためのツールです。  
 Ollama と Python を使用して動作します。
 
----
 
 # 環境構築手順
 
@@ -17,21 +16,7 @@ https://ollama.com/
 
 ```bash
 ollama --version
-````
-
----
-
-## 2. Python 環境の構築
-
-必要なライブラリをインストールします。
-
-```bash
-pip install -r requirements.txt
 ```
-
----
-
-## 3. Ollama の起動
 
 Ollama のサーバーを起動します。
 
@@ -39,7 +24,39 @@ Ollama のサーバーを起動します。
 ollama serve
 ```
 
----
+## 2. Python 環境の構築
+仮想環境を作成します。
+
+```bash
+python -m venv venv
+```
+
+仮想環境を有効化します。
+
+```bash
+source venv/Scripts/activate
+```
+
+必要なライブラリをインストールします。
+
+```bash
+pip install -r requirements.txt
+```
+
+## 3. ffmpeg のインストール
+m4aをwavに変換するためのツールです。
+以下からダウンロードし、パスを通してください。
+https://github.com/BtbN/FFmpeg-Builds/releases
+
+```bash
+export PATH=$PATH:/d/ffmpeg/bin
+```
+
+m4aをwavに変換します。
+
+```bash
+ffmpeg -y -i input/lesson.m4a -ac 1 -ar 16000 -vn output.wav
+```
 
 ## 4. プログラムの実行
 
@@ -55,4 +72,5 @@ python speach2text.py
 * Ollama が起動していない場合、プログラムは動作しません
 * 必要に応じて Ollama のモデルを事前に pull してください
 
-```
+
+
