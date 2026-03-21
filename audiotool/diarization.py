@@ -1,5 +1,5 @@
 from pyannote.audio import Pipeline
-from segment import Segment
+from audiotool.segment import Segment
 
 
 def diarization(input_file):

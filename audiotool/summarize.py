@@ -1,6 +1,4 @@
 import requests
-from faster_whisper import WhisperModel
-from whisper import transcribe
 
 
 def summarize(text):

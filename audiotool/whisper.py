@@ -1,5 +1,5 @@
 import os
-from segment import Segment
+from audiotool.segment import Segment
 from faster_whisper import WhisperModel
 
 

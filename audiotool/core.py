@@ -1,8 +1,8 @@
 import os
 import bisect
-from whisper import transcribe
-from diarization import diarization
-from summarize import summarize
+from audiotool.whisper import transcribe
+from audiotool.diarization import diarization
+from audiotool.summarize import summarize
 
 
 def cuda_setup():
@@ -21,8 +21,7 @@ def cuda_setup():
             os.add_dll_directory(path)
 
 
-def main(input_file, only_transcription):
-    cuda_setup()
+def process_audio(input_file, only_transcription):
     segments_transcribe = transcribe(input_file)
     segments_diarization = diarization(input_file)
 
@@ -42,19 +41,19 @@ def main(input_file, only_transcription):
             segments_merged.append(st)
 
     # 確認
+    text = ""
     for segment in segments_merged:
-        print(
-            f"{segment.start:.2f} - {segment.end:.2f} | {segment.speaker} | {segment.text}")
+        text += f"{segment.start:.2f} - {segment.end:.2f} | {segment.speaker} | {segment.text}\n"
 
     if not only_transcription:
-        text = ""
-        for segment in segments_merged:
-            text += segment.text
         summary = summarize(text)
-        print(summary)
+        return summary
+    else:
+        return text
 
 
 if __name__ == "__main__":
+    cuda_setup()
     INPUT_FILE = "input/audio.wav"
     ONLY_TRANSCRIPTION = True
     main(INPUT_FILE, ONLY_TRANSCRIPTION)
