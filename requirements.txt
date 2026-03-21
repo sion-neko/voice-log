@@ -7,3 +7,5 @@ torchcodec
 soundfile
 torchaudio
 pydub
+fastapi
+uvicorn
