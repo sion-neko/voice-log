@@ -7,7 +7,7 @@ from audiotool.summarize import summarize
 
 def cuda_setup():
     # GPUライブラリ (CUDA/cuDNN) のパスを動的に追加
-    base_path = os.path.dirname(os.path.abspath(__file__))
+    base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     cuda_paths = [
         os.path.join(base_path, "venv", "Lib", "site-packages",
                      "nvidia", "cublas", "bin"),
@@ -56,4 +56,7 @@ if __name__ == "__main__":
     cuda_setup()
     INPUT_FILE = "input/audio.wav"
     ONLY_TRANSCRIPTION = True
-    main(INPUT_FILE, ONLY_TRANSCRIPTION)
+
+    # process_audio is the main processing logic
+    result = process_audio(INPUT_FILE, ONLY_TRANSCRIPTION)
+    print(result)
