@@ -60,10 +60,18 @@ ffmpeg -y -i input/lesson.m4a -ac 1 -ar 16000 -vn output.wav
 
 ## 4. プログラムの実行
 
-以下のコマンドで音声の文字起こしを実行できます。
+以下のコマンドで音声の文字起こしAPIサーバーを起動できます。
 
 ```bash
-python speach2text.py
+uvicorn main:app --reload
+```
+
+## 5. フロントエンドの実行
+
+以下のコマンドでフロントエンドを起動できます。
+
+```bash
+npm run dev
 ```
 
 
