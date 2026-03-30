@@ -2,6 +2,7 @@ import os
 from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 import shutil
+from datetime import datetime
 from audiotool.core import process_audio
 
 
@@ -30,9 +31,17 @@ app.add_middleware(
 def summarize(file: UploadFile = File(...)):
     with open("audio_temp.wav", "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
-    result = process_audio("audio_temp.wav", True)
+    # result = process_audio("audio_temp.wav", True)
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    diarization_result = {"created_at": now, "segments": []}
+    diarization_result["segments"].append({
+        "start": 0,
+        "end": 10,
+        "speaker": "Speaker 1",
+        "text": "Hello World"
+    })
     os.remove("audio_temp.wav")
-    return {"message": result}
+    return diarization_result
 
 
 @app.get("/")
