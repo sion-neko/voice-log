@@ -2,7 +2,7 @@ import { useState, useRef } from 'react';
 import './App.css';
 
 function App() {
-  const [data, setData] = useState<{ message: string } | null>(null);
+  const [data, setData] = useState<{ created_at: string; segments: { start: number; end: number; speaker: string; text: string }[] } | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -58,7 +58,7 @@ function App() {
       setData(json);
     } catch (error) {
       console.error(error);
-      setData({ message: "エラーが発生しました。サーバーの接続を確認してください。" });
+      setData({ created_at: "", segments: [] });
     } finally {
       setIsLoading(false);
     }
@@ -158,7 +158,14 @@ function App() {
             <h2>要約結果</h2>
           </div>
           <div className="result-content">
-            {data.message}
+            {data.created_at}
+            {data.segments.map((segment: any) => (
+              <div key={segment.start}>
+                <p>{segment.start} - {segment.end}</p>
+                <p>{segment.speaker}</p>
+                <p>{segment.text}</p>
+              </div>
+            ))}
           </div>
         </div>
       )}

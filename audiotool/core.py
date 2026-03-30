@@ -1,5 +1,6 @@
 import os
 import bisect
+from datetime import datetime
 from audiotool.whisper import transcribe
 from audiotool.diarization import diarization
 from audiotool.summarize import summarize
@@ -41,15 +42,21 @@ def process_audio(input_file, only_transcription):
             segments_merged.append(st)
 
     # 確認
-    text = ""
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    diarization_result = {"created_at": now, "segments": []}
     for segment in segments_merged:
-        text += f"{segment.start:.2f} - {segment.end:.2f} | {segment.speaker} | {segment.text}\n"
+        diarization_result["segments"].append({
+            "start": segment.start,
+            "end": segment.end,
+            "speaker": segment.speaker,
+            "text": segment.text
+        })
 
     if not only_transcription:
-        summary = summarize(text)
+        summary = summarize(diarization_result)
         return summary
     else:
-        return text
+        return diarization_result
 
 
 if __name__ == "__main__":
