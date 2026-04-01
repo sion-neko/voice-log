@@ -507,3 +507,119 @@ button.chat-time-link:hover {
   word-break: break-word;
 }
 
+/* Loading Skeleton & Wave */
+.loading-section {
+  animation: fadeIn 0.5s ease-out;
+}
+
+.loading-animation-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  background: rgba(139, 92, 246, 0.05);
+  border-radius: 12px;
+  border: 1px dashed rgba(139, 92, 246, 0.2);
+  overflow: hidden;
+}
+
+.walking-container {
+  width: 100%;
+  height: 60px;
+  position: relative;
+  border-bottom: 2px solid rgba(139, 92, 246, 0.3);
+  margin-bottom: 1rem;
+  max-width: 400px;
+  overflow: hidden;
+}
+
+.walking-character-wrapper {
+  position: absolute;
+  bottom: 0px;
+  left: -80px;
+  animation: walkRight 6s linear infinite;
+  display: flex;
+  gap: 15px;
+}
+
+.walking-character {
+  font-size: 2.2rem;
+  animation: bob 0.4s ease-in-out infinite alternate;
+}
+
+.walking-character.follower {
+  animation-delay: 0.15s;
+}
+
+@keyframes walkRight {
+  0% { transform: translateX(0); opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { transform: translateX(500px); opacity: 0; }
+}
+
+@keyframes bob {
+  0% { transform: scaleX(-1) translateY(0) rotate(0deg); }
+  100% { transform: scaleX(-1) translateY(-8px) rotate(-5deg); }
+}
+
+.loading-text {
+  font-weight: 500;
+  color: var(--accent-color);
+  animation: pulse 4s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}
+
+.skeleton-message {
+  opacity: 0.8;
+}
+
+.skeleton-avatar {
+  background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
+  border: none !important;
+}
+
+.skeleton-name {
+  width: 80px;
+  height: 16px;
+  background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
+  border-radius: 4px;
+  margin-bottom: 4px;
+}
+
+.skeleton-bubble {
+  background: transparent;
+  border: 1px solid var(--card-border) !important;
+  min-width: 250px;
+  box-shadow: none !important;
+}
+
+.skeleton-line {
+  height: 14px;
+  background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
+  border-radius: 4px;
+  margin-bottom: 12px;
+  width: 100%;
+}
+
+.skeleton-line:last-child {
+  margin-bottom: 0;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+

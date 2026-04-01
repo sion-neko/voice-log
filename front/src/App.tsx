@@ -148,9 +148,23 @@ function App() {
   const [file, setFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [elapsedTime, setElapsedTime] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    let interval: ReturnType<typeof setInterval>;
+    if (isLoading) {
+      setElapsedTime(0);
+      interval = setInterval(() => {
+        setElapsedTime(prev => prev + 1);
+      }, 1000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isLoading]);
 
   useEffect(() => {
     if (file) {
@@ -296,17 +310,66 @@ function App() {
             </>
           ) : (
             <>
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 2v20" />
-                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-              </svg>
+              
               音声を要約する
             </>
           )}
         </button>
       </div>
 
-      {data && (
+      {isLoading && (
+        <div className="result-section loading-section">
+          <div className="result-header">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>
+            </svg>
+            <h2>要約中...</h2>
+          </div>
+          <div className="result-content">
+            <div className="loading-animation-wrapper">
+              <div className="walking-container">
+                <div className="walking-character-wrapper">
+                  <div className="walking-character follower">🏃</div>
+                  <div className="walking-character">🐕</div>
+                </div>
+              </div>
+              <div className="loading-text">
+                AIが音声を分析・要約しています...
+                <span style={{ marginLeft: "12px", fontSize: "0.9em", color: "var(--text-secondary)", fontVariantNumeric: "tabular-nums" }}>
+                  {elapsedTime > 0 ? `${elapsedTime}秒経過` : ''}
+                </span>
+              </div>
+            </div>
+            
+            <div className="chat-container">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className={`chat-message ${i % 2 === 0 ? 'chat-right' : 'chat-left'} speaker-changed skeleton-message`}>
+                  <div className="chat-avatar-wrapper">
+                    <div className="chat-avatar skeleton-avatar"></div>
+                  </div>
+                  <div className="chat-content">
+                    <div className="chat-header">
+                      <div className="skeleton-name"></div>
+                    </div>
+                    <div className="chat-bubble-row">
+                      <div className="chat-bubble skeleton-bubble" style={{ 
+                        borderLeft: i % 2 !== 0 ? '3px solid #e2e8f0' : 'none', 
+                        borderRight: i % 2 === 0 ? '3px solid #e2e8f0' : 'none' 
+                      }}>
+                        <div className="skeleton-line"></div>
+                        <div className="skeleton-line" style={{ width: i % 2 === 0 ? '70%' : '90%' }}></div>
+                        {i === 1 && <div className="skeleton-line" style={{ width: '50%' }}></div>}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {data && !isLoading && (
         <div className="result-section">
           <div className="result-header">
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
