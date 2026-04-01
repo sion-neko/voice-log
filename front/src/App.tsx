@@ -50,6 +50,97 @@ const getSpeakerStyle = (speakerStr: string) => {
   };
 };
 
+const CustomAudioPlayer = ({ src, audioRef }: { src: string, audioRef: React.RefObject<HTMLAudioElement | null> }) => {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+
+  const togglePlayPause = () => {
+    if (audioRef.current) {
+      if (isPlaying) {
+        audioRef.current.pause();
+      } else {
+        audioRef.current.play();
+      }
+      setIsPlaying(!isPlaying);
+    }
+  };
+
+  const onTimeUpdate = () => {
+    if (audioRef.current) {
+      setCurrentTime(audioRef.current.currentTime);
+    }
+  };
+
+  const onLoadedMetadata = () => {
+    if (audioRef.current) {
+      setDuration(audioRef.current.duration);
+    }
+  };
+
+  const onSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newTime = Number(e.target.value);
+    if (audioRef.current) {
+      audioRef.current.currentTime = newTime;
+      setCurrentTime(newTime);
+    }
+  };
+
+  useEffect(() => {
+    const handlePlay = () => setIsPlaying(true);
+    const handlePause = () => setIsPlaying(false);
+    
+    const audioEl = audioRef.current;
+    if (audioEl) {
+      audioEl.addEventListener('play', handlePlay);
+      audioEl.addEventListener('pause', handlePause);
+      return () => {
+        audioEl.removeEventListener('play', handlePlay);
+        audioEl.removeEventListener('pause', handlePause);
+      };
+    }
+  }, [audioRef]);
+
+  const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
+
+  return (
+    <div className="custom-player-wrapper">
+      <audio 
+        ref={audioRef} 
+        src={src} 
+        onTimeUpdate={onTimeUpdate} 
+        onLoadedMetadata={onLoadedMetadata}
+        onEnded={() => setIsPlaying(false)}
+        style={{ display: 'none' }}
+      />
+      <button className="player-play-btn" onClick={togglePlayPause} aria-label={isPlaying ? "一時停止" : "再生"}>
+        {isPlaying ? (
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M6 4h4v16H6zm8 0h4v16h-4z"/>
+          </svg>
+        ) : (
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style={{ marginLeft: '4px' }}>
+            <path d="M8 5v14l11-7z"/>
+          </svg>
+        )}
+      </button>
+      <div className="player-time-display">{formatTime(currentTime)}</div>
+      <input 
+        type="range" 
+        className="player-seek-bar" 
+        min={0} 
+        max={duration || 0} 
+        step={0.1}
+        value={currentTime} 
+        onChange={onSeek} 
+        aria-label="シークバー"
+        style={{ background: `linear-gradient(to right, var(--accent-color) ${progress}%, #e2e8f0 ${progress}%)` }}
+      />
+      <div className="player-time-display">{formatTime(duration)}</div>
+    </div>
+  );
+};
+
 function App() {
   const [data, setData] = useState<{ created_at: string; segments: { start: number; end: number; speaker: string; text: string }[] } | null>(null);
   const [file, setFile] = useState<File | null>(null);
@@ -234,7 +325,7 @@ function App() {
             
             {audioUrl && (
               <div className="audio-player-container">
-                <audio ref={audioRef} src={audioUrl} controls className="custom-audio-player" />
+                <CustomAudioPlayer src={audioUrl} audioRef={audioRef} />
               </div>
             )}
 
