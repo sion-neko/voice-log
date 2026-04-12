@@ -210,7 +210,7 @@ function App() {
           console.error(e);
         }
       });
-    }, 3000);
+    }, 10000);
 
     return () => clearInterval(interval);
   }, [processingIds.join(',')]);
@@ -434,8 +434,8 @@ function App() {
         {!selectedResult ? (
           <div className="empty-main-content">
             <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.2, marginBottom: '1rem' }}>
-              <path d="m16 2 4 4-4 4"/>
-              <path d="M20 6H8a4 4 0 0 0-4 4v10"/>
+              <polyline points="9 14 4 9 9 4"/>
+              <path d="M20 20v-7a4 4 0 0 0-4-4H4"/>
             </svg>
             <h2>サイドバーから履歴を選択するか<br/>新しい音声をアップロードしてください</h2>
           </div>
