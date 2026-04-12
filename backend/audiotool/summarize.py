@@ -4,7 +4,7 @@ import requests
 
 
 OLLAMA_URL = "http://localhost:11434/api/generate"
-OLLAMA_MODEL = "qwen:0.5b"
+OLLAMA_MODEL = "gemma4"
 
 
 def _build_transcript(segments: list[dict]) -> str:
@@ -23,23 +23,30 @@ def _build_prompt(transcript: str) -> str:
 
 {transcript}
 
-上記の内容を分析し、以下のJSON形式のみで回答してください。余分な説明は不要です。
+上記の内容を分析し、話題（章）ごとに分類してください。以下のJSON形式のみで回答してください。余分な説明は不要です。
 
 {{
-  "summary": "全体の要約（3〜5文程度）",
-  "highlights": [
+  "topics": [
     {{
-      "start": <開始時間(秒, 数値)>,
-      "speaker": "<話者ラベル>",
-      "text": "重要な発言（文字起こしの原文をそのまま抜き出す）",
-      "reason": "重要な理由（10〜20文字程度）"
+      "title": "話題のタイトル（短く簡潔に）",
+      "summary": "この話題の要約（2〜3文程度）",
+      "highlights": [
+        {{
+          "start": <開始時間(秒, 数値)>,
+          "speaker": "<話者ラベル>",
+          "text": "重要な発言（文字起こしの原文をそのまま抜き出す）",
+          "reason": "重要な理由（10〜20文字程度）"
+        }}
+      ]
     }}
   ]
 }}
 
 ルール:
-- summary は日本語で簡潔に書く
-- highlights は重要度が高い発言を3〜5個選ぶ
+- topics は内容の流れに沿って2〜5個に分ける
+- 各 topic の title は短く簡潔な日本語で書く
+- 各 topic の summary は日本語で簡潔に書く
+- 各 topic の highlights は重要度が高い発言を1〜3個選ぶ
 - highlights の text は必ず文字起こしの原文から一字一句そのまま抜き出す（要約・改変禁止）
 - highlights の start はその発言が始まる秒数（数値）を記載する
 - 回答はJSONのみ。マークダウンのコードブロック（```）は不要"""
@@ -60,17 +67,23 @@ def _extract_json(text: str) -> dict:
 
 def summarize(segments: list[dict]) -> dict:
     """
-    セグメントリストを受け取り、要約と重要箇所を返す。
+    セグメントリストを受け取り、話題ごとの要約と重要箇所を返す。
 
     Returns:
         {
-            "summary": str,
-            "highlights": [
+            "topics": [
                 {
-                    "start": float,
-                    "speaker": str,
-                    "text": str,      # 原文抜き出し
-                    "reason": str
+                    "title": str,
+                    "summary": str,
+                    "highlights": [
+                        {
+                            "start": float,
+                            "speaker": str,
+                            "text": str,      # 原文抜き出し
+                            "reason": str
+                        },
+                        ...
+                    ]
                 },
                 ...
             ]
@@ -88,13 +101,13 @@ def summarize(segments: list[dict]) -> dict:
                 "model": OLLAMA_MODEL,
                 "prompt": prompt,
                 "stream": False,
-            },
-            timeout=120,
+                "format": "json"
+            }
         )
         res.raise_for_status()
     except requests.RequestException as e:
         print(f"Error connecting to Ollama: {e}")
-        return {"summary": "要約に失敗しました。Ollamaへの接続を確認してください。", "highlights": []}
+        return {"topics": [{"title": "エラー", "summary": "要約に失敗しました。Ollamaへの接続を確認してください。", "highlights": []}]}
 
     raw = res.json().get("response", "")
     print(f"Raw response: {raw[:300]}")
@@ -103,14 +116,15 @@ def summarize(segments: list[dict]) -> dict:
         result = _extract_json(raw)
     except (ValueError, json.JSONDecodeError) as e:
         print(f"JSON parse error: {e}")
-        return {"summary": raw, "highlights": []}
+        return {"topics": [{"title": "要約結果", "summary": raw, "highlights": []}]}
 
     # highlights の start を float に強制変換
-    for h in result.get("highlights", []):
-        try:
-            h["start"] = float(h.get("start", 0))
-        except (TypeError, ValueError):
-            h["start"] = 0.0
+    for topic in result.get("topics", []):
+        for h in topic.get("highlights", []):
+            try:
+                h["start"] = float(h.get("start", 0))
+            except (TypeError, ValueError):
+                h["start"] = 0.0
 
     return result
 

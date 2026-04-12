@@ -144,9 +144,14 @@ const CustomAudioPlayer = ({ src, audioRef }: { src: string, audioRef: React.Ref
 };
 
 type Segment = { start: number; end: number; speaker: string; text: string };
-type SummaryData = {
+type Highlight = { start: number; speaker: string; text: string; reason: string };
+type Topic = {
+  title: string;
   summary: string;
-  highlights: { start: number; speaker: string; text: string; reason: string }[];
+  highlights: Highlight[];
+};
+type SummaryData = {
+  topics: Topic[];
 };
 
 function App() {
@@ -462,36 +467,36 @@ function App() {
               )}
 
               {summaryData && !isSummarizing && (
-                <div className="summary-card" style={{ animation: 'fadeInTab 0.5s ease-out', marginBottom: '0' }}>
-                  <div className="summary-card-header">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <circle cx="12" cy="12" r="10"/>
-                      <line x1="12" y1="8" x2="12" y2="12"/>
-                      <line x1="12" y1="16" x2="12.01" y2="16"/>
-                    </svg>
-                    <span>AI 要約</span>
-                  </div>
-                  <p className="summary-card-text">{summaryData.summary}</p>
-                  {summaryData.highlights.length > 0 && (
-                    <div className="summary-highlights">
-                      <div className="summary-highlights-title">⭐ 重要箇所</div>
-                      {summaryData.highlights.map((h, i) => (
-                        <button
-                          key={i}
-                          className="highlight-item"
-                          onClick={() => {
-                            playAudioAt(h.start);
-                          }}
-                          title={`${formatTime(h.start)} から再生`}
-                          aria-label={`重要箇所: ${h.text}`}
-                        >
-                          <span className="highlight-time">{formatTime(h.start)}</span>
-                          <span className="highlight-text">{h.text}</span>
-                          <span className="highlight-reason">{h.reason}</span>
-                        </button>
-                      ))}
+                <div className="topics-container" style={{ animation: 'fadeInTab 0.5s ease-out' }}>
+                  {summaryData.topics.map((topic, topicIndex) => (
+                    <div key={topicIndex} className="topic-card">
+                      <div className="topic-header">
+                        <span className="topic-number">{topicIndex + 1}</span>
+                        <h3 className="topic-title">{topic.title}</h3>
+                      </div>
+                      <p className="topic-summary">{topic.summary}</p>
+                      {topic.highlights.length > 0 && (
+                        <div className="summary-highlights">
+                          <div className="summary-highlights-title">⭐ 重要箇所</div>
+                          {topic.highlights.map((h, i) => (
+                            <button
+                              key={i}
+                              className="highlight-item"
+                              onClick={() => {
+                                playAudioAt(h.start);
+                              }}
+                              title={`${formatTime(h.start)} から再生`}
+                              aria-label={`重要箇所: ${h.text}`}
+                            >
+                              <span className="highlight-time">{formatTime(h.start)}</span>
+                              <span className="highlight-text">{h.text}</span>
+                              <span className="highlight-reason">{h.reason}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                  )}
+                  ))}
                 </div>
               )}
             </div>
@@ -508,8 +513,10 @@ function App() {
                   const prevSpeaker = index > 0 ? (data.segments[index - 1].speaker || "話者") : null;
                   const isSpeakerChanged = index === 0 || prevSpeaker !== speakerName;
 
-                  const isHighlighted = summaryData?.highlights.some(
-                    h => Math.abs(h.start - segment.start) < 0.5
+                  const isHighlighted = summaryData?.topics.some(
+                    topic => topic.highlights.some(
+                      h => Math.abs(h.start - segment.start) < 0.5
+                    )
                   ) ?? false;
                   
                   return (
