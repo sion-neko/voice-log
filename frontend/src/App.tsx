@@ -178,10 +178,35 @@ function App() {
   };
 
   useEffect(() => {
+    // Initial fetch
     fetchResults();
-    const interval = setInterval(fetchResults, 3000);
-    return () => clearInterval(interval);
   }, []);
+
+  const processingIds = results.filter(r => !r.has_summary).map(r => r.id);
+
+  useEffect(() => {
+    if (processingIds.length === 0) return;
+
+    const interval = setInterval(() => {
+      processingIds.forEach(async (id) => {
+        try {
+          const res = await fetch(`http://localhost:8000/outputs/${id}/summary.json`, { method: 'HEAD' });
+          if (res.ok) {
+            setResults(prev => prev.map(r => r.id === id ? { ...r, has_transcription: true, has_summary: true } : r));
+          } else {
+            const tRes = await fetch(`http://localhost:8000/outputs/${id}/transcription.json`, { method: 'HEAD' });
+            if (tRes.ok) {
+              setResults(prev => prev.map(r => r.id === id && !r.has_transcription ? { ...r, has_transcription: true } : r));
+            }
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      });
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [processingIds.join(',')]);
 
   const selectedResult = results.find(r => r.id === selectedId);
   const isLoadingTranscription = selectedResult && !selectedResult.has_transcription;
@@ -449,7 +474,7 @@ function App() {
                         </div>
                       </div>
                       <div className="loading-text">
-                        {isLoadingTranscription ? 'AIが音声を分析しています...' : 'AIが要約を生成しています...'}
+                        {isLoadingTranscription ? '文字起こし中です...' : '要約生成中です...'}
                         <span style={{ marginLeft: "12px", fontSize: "0.9em", color: "var(--text-secondary)", fontVariantNumeric: "tabular-nums" }}>
                           {elapsedTime > 0 ? `${elapsedTime}秒経過` : ''}
                         </span>
