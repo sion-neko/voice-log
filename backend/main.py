@@ -1,5 +1,6 @@
 import os
 import json
+import logging
 from fastapi import FastAPI, UploadFile, File, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -13,13 +14,24 @@ from datetime import datetime
 OUTPUT_DIR = Path("./output")
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
+# ログ設定
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    handlers=[
+        logging.FileHandler("app.log", encoding="utf-8"),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
+
 def _save_json(data: dict, filename: str, folder_name: str) -> str:
     folder = OUTPUT_DIR / folder_name 
     folder.mkdir(parents=True, exist_ok=True)
     filepath = folder / f"{filename}.json"
     with open(filepath, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
-    print(f"Saved: {filepath}")
+    logger.info(f"Saved: {filepath}")
     return filepath
 
 # GPUライブラリ (CUDA/cuDNN) のパスを動的に追加
@@ -30,7 +42,7 @@ cuda_paths = [
 ]
 for path in cuda_paths:
     if os.path.exists(path):
-        print(f"Adding DLL directory: {path}")
+        logger.info(f"Adding DLL directory: {path}")
         os.add_dll_directory(path)
 
 app = FastAPI()
@@ -45,14 +57,16 @@ app.mount("/outputs", StaticFiles(directory="output"), name="outputs")
 
 def process_audio_background(input_filepath: str, folder_name: str):
     """バックグラウンドで文字起こしと要約を実行する"""
-    print(f"Starting background processing for {folder_name}")
+    logger.info(f"[{folder_name}] Starting background processing. Target file: {input_filepath}")
     
     transcription_result = {}
     # 1. 文字起こし + 話者分析
     try:
+        logger.info(f"[{folder_name}] Starting audio transcription and speaker analysis...")
         transcription_result = process_audio(input_filepath)
+        logger.info(f"[{folder_name}] Transcription completed successfully. Extracted {len(transcription_result.get('segments', []))} segments.")
     except Exception as e:
-        print(f"Error in transcription for {folder_name}: {e}")
+        logger.error(f"[{folder_name}] Error in transcription: {e}", exc_info=True)
         transcription_result = {
             "segments": [{"start": 0.0, "end": 0.0, "speaker": "SYSTEM", "text": f"文字起こし処理に失敗しました: {e}"}]
         }
@@ -60,20 +74,24 @@ def process_audio_background(input_filepath: str, folder_name: str):
         try:
             _save_json(transcription_result, "transcription", folder_name)
         except Exception as e_save:
-            print(f"Failed to save transcription.json for {folder_name}: {e_save}")
+            logger.error(f"[{folder_name}] Failed to save transcription.json: {e_save}", exc_info=True)
 
     # 2. 要約
     summary_result = {}
     try:
         segments = transcription_result.get("segments", [])
         if not segments:
+            logger.warning(f"[{folder_name}] No transcription segments available. Skipping summarization.")
             summary_result = {"topics": [{"title": "結果なし", "summary": "音声から文字起こしデータを取得できませんでした。", "highlights": []}]}
         elif segments[0].get("text", "").startswith("文字起こし処理に失敗しました"):
+            logger.warning(f"[{folder_name}] Transcription failed previously. Skipping summarization.")
             summary_result = {"topics": [{"title": "エラー", "summary": "文字起こしに失敗したため要約を実行できません。", "highlights": []}]}
         else:
+            logger.info(f"[{folder_name}] Starting summarization generation...")
             summary_result = summarize_audio(segments)
+            logger.info(f"[{folder_name}] Summarization completed successfully. Generated {len(summary_result.get('topics', []))} topics.")
     except Exception as e:
-        print(f"Error in summarization for {folder_name}: {e}")
+        logger.error(f"[{folder_name}] Error in summarization: {e}", exc_info=True)
         summary_result = {
             "topics": [{"title": "エラー", "summary": f"要約処理に失敗しました: {e}", "highlights": []}]
         }
@@ -81,7 +99,9 @@ def process_audio_background(input_filepath: str, folder_name: str):
         try:
             _save_json(summary_result, "summary", folder_name)
         except Exception as e_save:
-            print(f"Failed to save summary.json for {folder_name}: {e_save}")
+            logger.error(f"[{folder_name}] Failed to save summary.json: {e_save}", exc_info=True)
+            
+    logger.info(f"[{folder_name}] Background processing completed.")
 
 @app.post("/upload")
 def upload_file(background_tasks: BackgroundTasks, file: UploadFile = File(...)):
@@ -97,6 +117,7 @@ def upload_file(background_tasks: BackgroundTasks, file: UploadFile = File(...))
     with open(audio_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
         
+    logger.info(f"[{folder_name}] Received upload file '{original_filename}'. Saved to {audio_path}")
     background_tasks.add_task(process_audio_background, str(audio_path), folder_name)
     
     return {"message": "POSTしました。バックグラウンドで処理を開始します。", "folder": folder_name}

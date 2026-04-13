@@ -1,24 +1,36 @@
-import os
+import logging
 from .segment import Segment
 
 from faster_whisper import WhisperModel
 
+logger = logging.getLogger(__name__)
 
 def transcribe(input_file):
     # whisper large-v3 を GPU でロード
     try:
         model = WhisperModel("large-v3", device="cuda", compute_type="float16")
-        print("GPU (CUDA) model loaded successfully.")
+        logger.info("GPU (CUDA) model loaded successfully for faster-whisper.")
     except Exception as e:
-        print(f"Error loading GPU model: {e}")
+        logger.error(f"Error loading GPU model: {e}")
         return
 
-    print("Transcribing...")
+    logger.info("Transcribing...")
     segments, info = model.transcribe(
         input_file, language="ja", word_timestamps=True)
+        
+    duration = info.duration
+    logger.info(f"Target audio duration: {duration:.2f} seconds")
+    
     result = []
+    _last_percentage = 0
     for segment in segments:
         result.append(Segment(segment.start, segment.end, text=segment.text))
+        percentage = int((segment.end / duration) * 100) if duration > 0 else 0
+        if percentage >= _last_percentage + 5: # log every 5%
+            logger.info(f"Transcription progress: {percentage}% ({segment.end:.2f}s / {duration:.2f}s)")
+            _last_percentage = percentage
+            
+    logger.info("Transcription completed.")
     return result
 
 

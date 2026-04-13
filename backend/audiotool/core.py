@@ -3,6 +3,7 @@ import bisect
 from datetime import datetime
 from .whisper import transcribe
 from .diarization import diarization
+import concurrent.futures
 
 
 def cuda_setup():
@@ -21,9 +22,19 @@ def cuda_setup():
             os.add_dll_directory(path)
 
 
+import logging
+logger = logging.getLogger(__name__)
+
 def process_audio(input_file):
+    logger.info(f"Starting process_audio for {input_file}")
+    
+    logger.info("--> Calling transcribe() in subprocess to avoid VRAM collision")
     segments_transcribe = transcribe(input_file)
+    logger.info("<-- Returned from transcribe()")
+    
+    logger.info("--> Calling diarization() in subprocess")
     segments_diarization = diarization(input_file)
+    logger.info("<-- Returned from diarization()")
 
     # マージ
     sd_starts = [sd.start for sd in segments_diarization]
