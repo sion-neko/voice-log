@@ -5,3 +5,5 @@ original
 __pycache__
 *.wav
 output
+.env
+*.log

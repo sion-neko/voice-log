@@ -1,3 +1,4 @@
+import os
 import torch
 import logging
 from pyannote.audio import Pipeline
@@ -8,9 +9,9 @@ logger = logging.getLogger(__name__)
 def diarization(input_file):
     logger.info("Loading Pyannote diarization model...")
     pipeline = Pipeline.from_pretrained(
-        "pyannote/speaker-diarization-3.1", use_auth_token=True)
+        "pyannote/speaker-diarization-3.1", use_auth_token=os.environ.get("HF_TOKEN", True))
         
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda")
     pipeline.to(device)
     logger.info(f"Pyannote diarization model loaded on device: {device}")
 

@@ -3,7 +3,7 @@ import re
 import requests
 
 
-OLLAMA_URL = "http://localhost:11434/api/generate"
+OLLAMA_URL = "http://ollama:11434/api/generate"
 OLLAMA_MODEL = "gemma4"
 
 
@@ -106,7 +106,8 @@ def summarize(segments: list[dict]) -> dict:
         )
         res.raise_for_status()
     except requests.RequestException as e:
-        print(f"Error connecting to Ollama: {e}")
+        error_msg = res.text if 'res' in locals() and hasattr(res, 'text') else str(e)
+        print(f"Error connecting to Ollama: {e} - Response: {error_msg}")
         return {"topics": [{"title": "エラー", "summary": "要約に失敗しました。Ollamaへの接続を確認してください。", "highlights": []}]}
 
     raw = res.json().get("response", "")
