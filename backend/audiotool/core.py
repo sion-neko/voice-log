@@ -1,3 +1,4 @@
+import logging
 import os
 import bisect
 from datetime import datetime
@@ -22,16 +23,16 @@ def cuda_setup():
             os.add_dll_directory(path)
 
 
-import logging
 logger = logging.getLogger(__name__)
+
 
 def process_audio(input_file):
     logger.info(f"Starting process_audio for {input_file}")
-    
+
     logger.info("--> Calling transcribe()")
     segments_transcribe = transcribe(input_file)
     logger.info("<-- Returned from transcribe()")
-    
+
     logger.info("--> Calling diarization()")
     segments_diarization = diarization(input_file)
     logger.info("<-- Returned from diarization()")
@@ -61,6 +62,7 @@ def process_audio(input_file):
             "speaker": segment.speaker,
             "text": segment.text
         })
+
     return diarization_result
 
 
