@@ -332,8 +332,6 @@ def get_results():
             "id": folder.name,
             "title": title,
             "timestamp": timestamp_str,
-            "has_summary": has_summary,
-            "has_transcription": has_transcription,
             "transcription_status": status_data["transcription"],
             "summary_status": status_data["summary"],
             "notion_status": status_data["notion"],

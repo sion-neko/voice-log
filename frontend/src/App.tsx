@@ -145,11 +145,9 @@ type ResultItem = {
   id: string;
   title: string;
   timestamp: string;
-  has_summary: boolean;
-  has_transcription: boolean;
-  transcription_status?: string;
-  summary_status?: string;
-  notion_status?: string;
+  transcription_status: string;
+  summary_status: string;
+  notion_status: string;
   audio_filename: string | null;
 };
 
@@ -189,7 +187,7 @@ function App() {
     r.transcription_status === 'processing' || 
     r.summary_status === 'processing' || 
     r.notion_status === 'processing' ||
-    (!r.transcription_status && !r.has_summary)
+    r.transcription_status === 'none'
   ).map(r => r.id);
 
   useEffect(() => {
@@ -206,13 +204,13 @@ function App() {
   }, [processingIds.join(',')]);
 
   const selectedResult = results.find(r => r.id === selectedId);
-  const isLoadingTranscription = selectedResult?.transcription_status === 'processing' || (selectedResult && !selectedResult.has_transcription && !selectedResult.transcription_status);
-  const isLoadingSummary = selectedResult?.summary_status === 'processing' || (selectedResult && selectedResult.has_transcription && !selectedResult.has_summary && !selectedResult.summary_status);
+  const isLoadingTranscription = selectedResult?.transcription_status === 'processing' || selectedResult?.transcription_status === 'none';
+  const isLoadingSummary = selectedResult?.summary_status === 'processing' || (selectedResult?.transcription_status === 'success' && selectedResult?.summary_status === 'none');
   const isLoadingNotion = selectedResult?.notion_status === 'processing';
 
   useEffect(() => {
     if (selectedResult) {
-      if (selectedResult.has_transcription) {
+      if (selectedResult.transcription_status === 'success') {
         fetch(`http://localhost:8000/outputs/${selectedResult.id}/transcription.json`)
           .then(r => r.json())
           .then(setData)
@@ -221,7 +219,7 @@ function App() {
         setData(null);
       }
 
-      if (selectedResult.has_summary) {
+      if (selectedResult.summary_status === 'success') {
         fetch(`http://localhost:8000/outputs/${selectedResult.id}/summary.json`)
           .then(r => r.json())
           .then(setSummaryData)
@@ -233,7 +231,7 @@ function App() {
       setData(null);
       setSummaryData(null);
     }
-  }, [selectedResult?.id, selectedResult?.has_transcription, selectedResult?.has_summary]);
+  }, [selectedResult?.id, selectedResult?.transcription_status, selectedResult?.summary_status]);
 
   useEffect(() => {
     let interval: ReturnType<typeof setInterval>;
@@ -434,9 +432,9 @@ function App() {
                      <div className="result-item-time">{r.timestamp || r.id}</div>
                      {(r.transcription_status === 'failed' || r.summary_status === 'failed' || r.notion_status === 'failed') ? (
                         <span className="badge badge-error" style={{backgroundColor: '#fee2e2', color: '#991b1b'}}>エラー ❌</span>
-                     ) : (r.transcription_status === 'processing' || (!r.transcription_status && !r.has_transcription)) ? (
+                     ) : (r.transcription_status === 'processing' || r.transcription_status === 'none') ? (
                         <span className="badge badge-processing">文字起こし中</span>
-                     ) : (r.summary_status === 'processing' || (!r.summary_status && !r.has_summary)) ? (
+                     ) : (r.summary_status === 'processing' || (r.transcription_status === 'success' && r.summary_status === 'none')) ? (
                         <span className="badge badge-warning">要約中</span>
                      ) : r.notion_status === 'processing' ? (
                         <span className="badge badge-processing" style={{backgroundColor: '#dbeafe', color: '#1e40af'}}>Notion出力中</span>
