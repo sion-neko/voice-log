@@ -10,6 +10,7 @@ from pathlib import Path
 from audiotool.core import process_audio
 from audiotool.summarize import summarize as summarize_audio
 from datetime import datetime
+from audiotool.notion import format_and_save_summary
 
 OUTPUT_DIR = Path("./output")
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -106,6 +107,18 @@ def process_audio_background(input_filepath: str, folder_name: str):
             summary_result = summarize_audio(segments)
             logger.info(
                 f"[{folder_name}] Summarization completed successfully. Generated {len(summary_result.get('topics', []))} topics.")
+
+            # 要約をNotionに保存する
+            try:
+
+                filename = os.path.basename(input_filepath)
+                logger.info(f"[{folder_name}] Saving summary to Notion...")
+                format_and_save_summary(filename, summary_result)
+                logger.info(
+                    f"[{folder_name}] Successfully saved summary to Notion.")
+            except Exception as e_notion:
+                logger.error(
+                    f"[{folder_name}] Failed to save summary to Notion: {e_notion}", exc_info=True)
     except Exception as e:
         logger.error(
             f"[{folder_name}] Error in summarization: {e}", exc_info=True)
