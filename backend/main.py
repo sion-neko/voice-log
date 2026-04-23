@@ -84,168 +84,102 @@ app.add_middleware(
 app.mount("/outputs", StaticFiles(directory="output"), name="outputs")
 
 
-def process_audio_background(input_filepath: str, folder_name: str):
-    """バックグラウンドで文字起こしと要約を実行する"""
+def process_audio_background(input_filepath: str, folder_name: str, start_step: str = "transcription"):
+    """バックグラウンドで文字起こしと要約を実行する（リトライ時は指定ステップから開始）"""
     logger.info(
-        f"[{folder_name}] Starting background processing. Target file: {input_filepath}")
+        f"[{folder_name}] Starting background processing (Step: {start_step}). Target file: {input_filepath}")
 
+    folder_path = OUTPUT_DIR / folder_name
     transcription_result = {}
-    _update_status(folder_name, "transcription", "processing")
+
     # 1. 文字起こし + 話者分析
-    try:
-        logger.info(
-            f"[{folder_name}] Starting audio transcription and speaker analysis...")
-        transcription_result = process_audio(input_filepath)
-        logger.info(
-            f"[{folder_name}] Transcription completed successfully. Extracted {len(transcription_result.get('segments', []))} segments.")
-        _update_status(folder_name, "transcription", "success")
-    except Exception as e:
-        logger.error(
-            f"[{folder_name}] Error in transcription: {e}", exc_info=True)
-        transcription_result = {
-            "segments": [{"start": 0.0, "end": 0.0, "speaker": "SYSTEM", "text": f"文字起こし処理に失敗しました: {e}"}]
-        }
-        _update_status(folder_name, "transcription", "failed")
-    finally:
+    if start_step == "transcription":
+        _update_status(folder_name, "transcription", "processing")
         try:
-            _save_json(transcription_result, "transcription", folder_name)
-        except Exception as e_save:
-            logger.error(
-                f"[{folder_name}] Failed to save transcription.json: {e_save}", exc_info=True)
+            logger.info(f"[{folder_name}] Starting audio transcription and speaker analysis...")
+            transcription_result = process_audio(input_filepath)
+            logger.info(f"[{folder_name}] Transcription completed successfully.")
+            _update_status(folder_name, "transcription", "success")
+        except Exception as e:
+            logger.error(f"[{folder_name}] Error in transcription: {e}", exc_info=True)
+            transcription_result = {
+                "segments": [{"start": 0.0, "end": 0.0, "speaker": "SYSTEM", "text": f"文字起こし処理に失敗しました: {e}"}]
+            }
+            _update_status(folder_name, "transcription", "failed")
+        finally:
+            try:
+                _save_json(transcription_result, "transcription", folder_name)
+            except Exception as e_save:
+                logger.error(f"[{folder_name}] Failed to save transcription.json: {e_save}", exc_info=True)
+    else:
+        # ステップが「要約」または「Notion」からの場合、既存の文字起こし結果をロードする
+        try:
+            with open(folder_path / "transcription.json", "r", encoding="utf-8") as f:
+                transcription_result = json.load(f)
+            logger.info(f"[{folder_name}] Loaded existing transcription for {start_step} retry.")
+        except Exception as e:
+            logger.error(f"[{folder_name}] Failed to load transcription for retry: {e}")
+            return
 
     # 2. 要約
     summary_result = {}
-    _update_status(folder_name, "summary", "processing")
-    try:
-        segments = transcription_result.get("segments", [])
-        if not segments:
-            logger.warning(
-                f"[{folder_name}] No transcription segments available. Skipping summarization.")
-            summary_result = {"topics": [
-                {"title": "結果なし", "summary": "音声から文字起こしデータを取得できませんでした。", "highlights": []}]}
-            _update_status(folder_name, "summary", "failed")
-        elif segments[0].get("text", "").startswith("文字起こし処理に失敗しました"):
-            logger.warning(
-                f"[{folder_name}] Transcription failed previously. Skipping summarization.")
-            summary_result = {"topics": [
-                {"title": "エラー", "summary": "文字起こしに失敗したため要約を実行できません。", "highlights": []}]}
-            _update_status(folder_name, "summary", "failed")
-        else:
-            logger.info(
-                f"[{folder_name}] Starting summarization generation...")
-            summary_result = summarize_audio(segments)
-            logger.info(
-                f"[{folder_name}] Summarization completed successfully. Generated {len(summary_result.get('topics', []))} topics.")
-            _update_status(folder_name, "summary", "success")
-
-            # 要約をNotionに保存する
-            _update_status(folder_name, "notion", "processing")
-            try:
-                filename = os.path.basename(input_filepath)
-                logger.info(f"[{folder_name}] Saving summary to Notion...")
-                format_and_save_summary(filename, summary_result)
-                logger.info(
-                    f"[{folder_name}] Successfully saved summary to Notion.")
-                _update_status(folder_name, "notion", "success")
-            except Exception as e_notion:
-                logger.error(
-                    f"[{folder_name}] Failed to save summary to Notion: {e_notion}", exc_info=True)
-                _update_status(folder_name, "notion", "failed")
-    except Exception as e:
-        logger.error(
-            f"[{folder_name}] Error in summarization: {e}", exc_info=True)
-        summary_result = {
-            "topics": [{"title": "エラー", "summary": f"要約処理に失敗しました: {e}", "highlights": []}]
-        }
-        _update_status(folder_name, "summary", "failed")
-    finally:
-        try:
-            _save_json(summary_result, "summary", folder_name)
-        except Exception as e_save:
-            logger.error(
-                f"[{folder_name}] Failed to save summary.json: {e_save}", exc_info=True)
-
-    logger.info(f"[{folder_name}] Background processing completed.")
-
-
-class RetryRequest(BaseModel):
-    step: str
-
-
-def retry_processing_background(folder_name: str, step: str):
-    folder_path = OUTPUT_DIR / folder_name
-    input_filepath = None
-    for f in folder_path.iterdir():
-        if f.is_file() and f.suffix.lower() in [".wav"]:
-            input_filepath = str(f)
-            break
-            
-    if not input_filepath:
-        logger.error(f"[{folder_name}] Cannot find audio file for retry.")
-        return
-
-    logger.info(f"[{folder_name}] Starting retry from step: {step}")
-
-    if step == "transcription":
-        # Start from the beginning
-        process_audio_background(input_filepath, folder_name)
-        return
-
-    # For summary or notion retry, we need the stored transcription
-    transcription_result = {}
-    try:
-        with open(folder_path / "transcription.json", "r", encoding="utf-8") as f:
-            transcription_result = json.load(f)
-    except Exception as e:
-        logger.error(f"[{folder_name}] Failed to load transcription for retry: {e}")
-        _update_status(folder_name, "summary", "failed")
-        return
-        
-    summary_result = {}
-    
-    if step == "summary":
+    if start_step in ["transcription", "summary"]:
         _update_status(folder_name, "summary", "processing")
         try:
             segments = transcription_result.get("segments", [])
-            logger.info(f"[{folder_name}] Starting summarization retry...")
-            summary_result = summarize_audio(segments)
-            logger.info(f"[{folder_name}] Summarization retry completed successfully.")
-            _update_status(folder_name, "summary", "success")
-            
+            if not segments or (len(segments) > 0 and segments[0].get("text", "").startswith("文字起こし処理に失敗しました")):
+                logger.warning(f"[{folder_name}] Transcription error or empty. Skipping summarization.")
+                summary_result = {"topics": [{"title": "エラー", "summary": "文字起こしデータが無効なため要約できません。", "highlights": []}]}
+                _update_status(folder_name, "summary", "failed")
+            else:
+                logger.info(f"[{folder_name}] Starting summarization generation...")
+                summary_result = summarize_audio(segments)
+                logger.info(f"[{folder_name}] Summarization completed successfully.")
+                _update_status(folder_name, "summary", "success")
+        except Exception as e:
+            logger.error(f"[{folder_name}] Error in summarization: {e}", exc_info=True)
+            summary_result = {"topics": [{"title": "エラー", "summary": f"要約処理に失敗しました: {e}", "highlights": []}]}
+            _update_status(folder_name, "summary", "failed")
+        finally:
             try:
                 _save_json(summary_result, "summary", folder_name)
             except Exception as e_save:
                 logger.error(f"[{folder_name}] Failed to save summary.json: {e_save}", exc_info=True)
-                
-        except Exception as e:
-            logger.error(f"[{folder_name}] Error in summarization retry: {e}", exc_info=True)
-            summary_result = {
-                "topics": [{"title": "エラー", "summary": f"要約処理に失敗しました: {e}", "highlights": []}]
-            }
-            _save_json(summary_result, "summary", folder_name)
-            _update_status(folder_name, "summary", "failed")
-            return 
-    
-    if step == "notion":
+    else:
+        # ステップが「Notion」からの場合、既存の要約結果をロードする
         try:
             with open(folder_path / "summary.json", "r", encoding="utf-8") as f:
                 summary_result = json.load(f)
+            logger.info(f"[{folder_name}] Loaded existing summary for Notion retry.")
         except Exception as e:
             logger.error(f"[{folder_name}] Failed to load summary for Notion retry: {e}")
-            _update_status(folder_name, "notion", "failed")
             return
-            
-    # Notion Output Phase
-    _update_status(folder_name, "notion", "processing")
-    try:
-        filename = os.path.basename(input_filepath)
-        logger.info(f"[{folder_name}] Saving summary to Notion...")
-        format_and_save_summary(filename, summary_result)
-        logger.info(f"[{folder_name}] Successfully saved summary to Notion.")
-        _update_status(folder_name, "notion", "success")
-    except Exception as e_notion:
-        logger.error(f"[{folder_name}] Failed to save summary to Notion retry: {e_notion}", exc_info=True)
-        _update_status(folder_name, "notion", "failed")
+
+    # 3. Notion 出力
+    if start_step in ["transcription", "summary", "notion"]:
+        # 要約が「エラー」等の場合はスキップする
+        topics = summary_result.get("topics", [])
+        if topics and topics[0].get("title") == "エラー":
+             logger.warning(f"[{folder_name}] Skipping Notion output due to previous error.")
+             return
+
+        _update_status(folder_name, "notion", "processing")
+        try:
+            filename = os.path.basename(input_filepath)
+            logger.info(f"[{folder_name}] Saving summary to Notion...")
+            format_and_save_summary(filename, summary_result)
+            logger.info(f"[{folder_name}] Successfully saved summary to Notion.")
+            _update_status(folder_name, "notion", "success")
+        except Exception as e_notion:
+            logger.error(f"[{folder_name}] Failed to save summary to Notion: {e_notion}", exc_info=True)
+            _update_status(folder_name, "notion", "failed")
+
+    logger.info(f"[{folder_name}] Background processing completed.")
+
+
+
+class RetryRequest(BaseModel):
+    step: str
 
 
 @app.post("/upload")
@@ -350,7 +284,18 @@ def retry_step(folder_id: str, request: RetryRequest, background_tasks: Backgrou
     step = request.step
     if step not in ["transcription", "summary", "notion"]:
         return {"error": "Invalid step"}
-        
+
+    # 音声ファイルを探す（1つ目に見つかった .wav を対象にする）
+    input_filepath = None
+    for f in folder_path.iterdir():
+        if f.is_file() and f.suffix.lower() in [".wav"]:
+            input_filepath = str(f)
+            break
+            
+    if not input_filepath:
+        return {"error": "Audio file not found for retry"}
+
+    # 後続のステータスをリセット
     _update_status(folder_id, step, "processing")
     if step == "transcription":
         _update_status(folder_id, "summary", "none")
@@ -358,7 +303,7 @@ def retry_step(folder_id: str, request: RetryRequest, background_tasks: Backgrou
     elif step == "summary":
         _update_status(folder_id, "notion", "none")
         
-    background_tasks.add_task(retry_processing_background, folder_id, step)
+    background_tasks.add_task(process_audio_background, input_filepath, folder_id, step)
     return {"message": f"{step}からの再処理を開始します"}
 
 
