@@ -1,84 +1,70 @@
-# Speech to Text
+# AI Speech Summarization 🎙️✨
 
-ローカルLLM環境で音声を文字起こしするためのツールです。  
-Ollama と Python を使用して動作します。
+AIを活用した高精度な音声文字起こし、話者分離、および要約ツールです。  
+会議や講義の音声をアップロードするだけで、誰が何を話したかを自動的に判別し、重要なポイントを整理して Notion へ保存します。
 
+![UI Mockup](https://raw.githubusercontent.com/sion-neko/AI_SpeechSummarization/main/docs/ui_screenshot.png)
+*※UIのイメージ画像です*
 
-# 環境構築手順
+## ✨ 主な機能
 
-## 1. Ollama のインストール
+- **🚀 高精度文字起こし**: `faster-whisper` を使用し、ローカル環境で高速かつ正確に音声をテキスト化します。
+- **👥 自動話者分離 (Diarization)**: `pyannote.audio` を活用し、複数の話者を自動的に識別。かわいい動物アイコンで色分けして表示します。
+- **📝 インテリジェント要約**: OpenAI GPT モデルを使用して、長い会話から「トピック」「要約」「重要なハイライト」を抽出します。
+- **📓 Notion 連携**: 生成された要約とハイライトを、整理されたフォーマットで Notion のデータベースへ自動保存します。
+- **🔄 インタラクティブ・ビューア**: 
+    - 文字起こし全文と要約をタブで切り替え。
+    - タイムスタンプをクリックして、その時点の音声を再生可能。
+    - 各ステップ（文字起こし、要約、Notion出力）の進捗をリアルタイムで確認。
+- **🛠️ エラーリカバリ**: 処理が途中で失敗しても、失敗したステップから再試行できるリトライ機能を搭載。
 
-以下の公式サイトから Ollama をインストールしてください。
+## 🏗️ システム構成
 
-https://ollama.com/
+- **Frontend**: React, Vite, TypeScript, CSS Modules
+- **Backend**: FastAPI (Python), faster-whisper, pyannote.audio
+- **AI Models**: 
+    - Transcription: Whisper
+    - Diarization: Pyannote
+    - Summarization: OpenAI API
 
-インストール後、以下のコマンドで動作確認ができます。
+## 🚀 セットアップ
 
-```bash
-ollama --version
+### 1. 必要条件
+- Python 3.10+
+- Node.js & npm
+- FFmpeg (パスが通っていること)
+- OpenAI API Key
+- Notion API Token & Database ID
+
+### 2. 環境変数の設定
+ルートディレクトリの `.env` ファイルに以下の情報を設定してください。
+
+```env
+OPENAI_API_KEY=your_openai_key
+NOTION_TOKEN=your_notion_token
+NOTION_DATABASE_ID=your_database_id
 ```
 
-Ollama のサーバーを起動します。
-
+### 3. バックエンドの起動
 ```bash
-ollama serve
-```
-
-## 2. Python 環境の構築
-仮想環境を作成します。
-
-```bash
+cd backend
 python -m venv venv
-```
-
-仮想環境を有効化します。
-
-```bash
-source venv/Scripts/activate
-```
-
-必要なライブラリをインストールします。
-
-```bash
+# Windows: venv\Scripts\activate / Mac: source venv/bin/activate
 pip install -r requirements.txt
+python -m uvicorn main:app --reload
 ```
 
-## 3. ffmpeg のインストール
-m4aをwavに変換するためのツールです。
-以下からダウンロードし、パスを通してください。
-https://github.com/BtbN/FFmpeg-Builds/releases
-
+### 4. フロントエンドの起動
 ```bash
-export PATH=$PATH:/d/ffmpeg/bin
-```
-
-m4aをwavに変換します。
-
-```bash
-ffmpeg -y -i input/lesson.m4a -ac 1 -ar 16000 -vn output.wav
-```
-
-## 4. プログラムの実行
-
-以下のコマンドで音声の文字起こしAPIサーバーを起動できます。
-
-```bash
-uvicorn main:app --reload
-```
-
-## 5. フロントエンドの実行
-
-以下のコマンドでフロントエンドを起動できます。
-
-```bash
+cd frontend
+npm install
 npm run dev
 ```
 
+## 🛠️ 開発者向け
+各処理のステータスは `backend/output/{folder_id}/status.json` で管理されています。
+文字起こし結果は `transcription.json`、要約結果は `summary.json` として各フォルダに保存されます。
 
-# 備考
+---
 
-* Ollama が起動していない場合、プログラムは動作しません
-* 必要に応じて Ollama のモデルを事前に pull してください
-
-
-
+Developed with ❤️ for efficient communication.
