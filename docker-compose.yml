@@ -9,6 +9,7 @@ services:
     environment:
       - NVIDIA_VISIBLE_DEVICES=all
       - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+      - TZ=Asia/Tokyo
     env_file:
       - .env
     gpus: all
