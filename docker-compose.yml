@@ -3,7 +3,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: speechsum-backend
+    container_name: voice-log-backend
     ports:
       - "8000:8000"
     environment:

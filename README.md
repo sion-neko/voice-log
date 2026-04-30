@@ -1,10 +1,10 @@
-# AI Speech Summarization
+# こえログ
 
-音声ファイルをアップロードするだけで、文字起こし・話者分離・要約を自動で行い、Notion へ保存するツールです。
+音声ファイルをアップロードするだけで、文字起こし・話者分離・要約を自動で行い、表示・再生するツールです。Notion への保存も同時に行います。
 
-## 対応フォーマット
-
-`.wav` / `.m4a` のみ対応しています。
+## デモ画面
+バイオリンのレッスン音声の要約に使用している様子。
+![alt text](img/image.png)
 
 ## 機能
 
@@ -14,6 +14,10 @@
 - **Notion 連携** — 要約結果を Notion データベースへ自動保存
 - **インタラクティブビューア** — タイムスタンプクリックで該当箇所を再生、処理進捗をリアルタイム表示
 - **ステップ再試行** — 失敗したステップ（文字起こし・要約・Notion 出力）から個別に再実行可能
+
+## 対応音声フォーマット
+
+`.wav` / `.m4a` のみ対応しています。
 
 ## 技術スタック
 
@@ -29,9 +33,8 @@
 
 ### 必要条件
 
-- Python 3.10+
 - Node.js & npm
-- FFmpeg（PATH が通っていること）
+- Docker（WSL 上で動作）
 - Hugging Face トークン（pyannote モデル使用に必要）
 - OpenAI 互換 API キー
 - Notion API キーとデータベース ID
@@ -61,18 +64,13 @@ NOTION_API_KEY=your_notion_api_key
 start.bat
 ```
 
-初回実行時は venv の作成・`pip install`・`npm install` を自動で行います。2回目以降はセットアップをスキップして即座に起動します。バックエンド（ポート 8000）とフロントエンド（ポート 5173）を起動し、ブラウザを自動で開きます。
+初回実行時は `npm install` を自動で行います。2回目以降はセットアップをスキップして即座に起動します。バックエンド（Docker / ポート 8000）とフロントエンド（ポート 5173）を起動し、ブラウザを自動で開きます。
 
 **手動起動**
 
 ```bash
-# バックエンド
-cd backend
-python -m venv venv
-venv\Scripts\activate        # Windows
-# source venv/bin/activate   # Mac/Linux
-pip install -r requirements.txt
-python -m uvicorn main:app --reload --port 8000
+# バックエンド（WSL 上で実行）
+docker compose up --build
 ```
 
 ```bash

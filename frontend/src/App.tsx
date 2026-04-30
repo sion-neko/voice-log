@@ -368,7 +368,7 @@ function App() {
               <line x1="8" x2="16" y1="22" y2="22" />
             </svg>
           </div>
-          <h2>AI Speech</h2>
+          <h2>こえログ</h2>
         </div>
 
         <div className="upload-container">
